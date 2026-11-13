@@ -1,5 +1,5 @@
 diff --git a/honk/Makefile b/honk/Makefile
-index da1e12d..91d06c9 100644
+index da1e12d..e1ef01a 100644
 --- a/honk/Makefile
 +++ b/honk/Makefile
 @@ -12,9 +12,9 @@
@@ -60,7 +60,7 @@ index da1e12d..91d06c9 100644
 +	HONK_ARCH_PACKAGES="$(HONK_TARGET_ARCH)" \
 +	OPENWRT_CC="$(HONK_CC)" \
 +	OPENWRT_CXX="$(HONK_CXX)" \
-+	/bin/bash -c 'set -o pipefail; /bin/bash "$$0" 2>&1 | /usr/bin/tee /tmp/honk-build.log' "$(PKG_DIR)/build.sh"
++	/bin/bash "$(PKG_DIR)/build.sh"
  endef
  
  define Package/honk/conffiles
