@@ -112,8 +112,10 @@ else
 	echo "honk package patch applied"
 fi
 
-# Ensure build.sh does not fail if HONK_ARCH_PACKAGES parameter check triggers
-sed -i 's/\${HONK_ARCH_PACKAGES:\?HONK_ARCH_PACKAGES is not set}/\${HONK_ARCH_PACKAGES:-x86_64}/g' "$packages_dir/honk/build.sh"
+# Ensure build.sh parameter checks do not fail on full buildroots
+sed -E -i 's/\$\{HONK_ARCH_PACKAGES:\?HONK_ARCH_PACKAGES is not set\}/\$\{HONK_ARCH_PACKAGES:-\$\{ARCH:-x86_64\}\}/g' "$packages_dir/honk/build.sh"
+sed -E -i 's/\$\{OPENWRT_CC:\?OPENWRT_CC is not set\}/\$\{OPENWRT_CC:-\$\{TARGET_CROSS\}gcc\}/g' "$packages_dir/honk/build.sh"
+sed -E -i 's/\$\{OPENWRT_CXX:\?OPENWRT_CXX is not set\}/\$\{OPENWRT_CXX:-\$\{TARGET_CROSS\}g\+\+\}/g' "$packages_dir/honk/build.sh"
 
 # ImmortalWrt's filogic target adds bridger to DEFAULT_PACKAGES, so a plain
 # GL-MT3000 build would ship it. This build excludes bridger, and the exclusion
