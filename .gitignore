@@ -1,0 +1,5 @@
+# Build tree and outputs (created by scripts/prepare-tree.sh and the build)
+.src/
+out/
+build-*.log
+config-*.diffconfig

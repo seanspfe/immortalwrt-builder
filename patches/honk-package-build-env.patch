@@ -1,0 +1,81 @@
+diff --git a/honk/Makefile b/honk/Makefile
+index da1e12d..4e45a6c 100644
+--- a/honk/Makefile
++++ b/honk/Makefile
+@@ -12,9 +12,9 @@
+ # nightly toolchain pinned in crates/honk-ebpf/rust-toolchain.toml, compiles
+ # honk-core with the crate's own pinned stable toolchain, and uses the OpenWrt
+ # cross gcc/g++ of the SDK (TARGET_CROSS) for BoringSSL, SQLite and the final
+-# link. HONK_VERSION is the package version (0.1.0_beta5, apk spells the beta
++# link. HONK_VERSION is the package version (0.1.0_beta4, apk spells the beta
+ # pre-release with "_beta") and HONK_GIT_TAG the upstream tag the sources come
+-# from (v0.1.0-beta.5), which is the version honk's build script embeds.
++# from (v0.1.0-beta.4), which is the version honk's build script embeds.
+ #
+ # The binary is built with the full feature set: the crate defaults
+ # (clash-api, mimalloc, rprx) plus ebpf and native-ui. native-ui embeds the
+@@ -38,12 +38,12 @@ PKG_DIR:=$(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+ include $(TOPDIR)/rules.mk
+ 
+ PKG_NAME:=honk
+-PKG_VERSION:=$(if $(HONK_VERSION),$(HONK_VERSION),0.1.0_beta5)
++PKG_VERSION:=$(if $(HONK_VERSION),$(HONK_VERSION),0.1.0_beta4)
+ PKG_RELEASE:=1
+ 
+ # Upstream release the sources are checked out from. honk's build script derives
+ # the version it embeds from the tag in GITHUB_REF, so build.sh exports it.
+-HONK_GIT_TAG:=$(if $(HONK_GIT_TAG),$(HONK_GIT_TAG),v0.1.0-beta.5)
++HONK_GIT_TAG:=$(if $(HONK_GIT_TAG),$(HONK_GIT_TAG),v0.1.0-beta.4)
+ 
+ PKG_LICENSE:=GPL-3.0-only
+ PKG_LICENSE_FILES:=LICENSE
+@@ -88,14 +88,42 @@ define Build/Prepare
+ 	$(CP) $(HONK_SRC)/. $(PKG_BUILD_DIR)/
+ endef
+ 
++# Rust build environment. rustup, cargo and the prebuilt bpf-linker live in the
++# home of the user running the build (this repository's workflow installs them
++# there); OpenWrt builds packages with a scrubbed environment, so the paths are
++# exported for the compile step. RUSTUP_TOOLCHAIN is deliberately not set: the
++# crates carry their own rust-toolchain.toml files (1.99.1 for honk-core,
++# nightly-* for the eBPF object) and rustup has to follow them.
++HONK_RUST_HOME?=$(HOME)
++HONK_RUSTUP_HOME?=$(HONK_RUST_HOME)/.rustup
++HONK_CARGO_HOME?=$(HONK_RUST_HOME)/.cargo
++
++# The workspace release profile uses fat LTO (lto = true) and one codegen unit,
++# which peaks well above the 7 GB of a GitHub hosted runner. LTO off plus a
++# small codegen parallelism keeps the link inside that budget; raise
++# HONK_CARGO_JOBS on a machine with more memory.
++HONK_CARGO_JOBS?=2
++
+ define Build/Compile
+-	HONK_SRC="$(PKG_BUILD_DIR)" \
+-	HONK_VERSION="$(PKG_VERSION)" \
+-	HONK_GIT_TAG="$(HONK_GIT_TAG)" \
+-	HONK_ARCH_PACKAGES="$(ARCH_PACKAGES)" \
+-	OPENWRT_CC="$(TARGET_CROSS)gcc" \
+-	OPENWRT_CXX="$(TARGET_CROSS)g++" \
+-	sh "$(PKG_DIR)/build.sh"
++	( \
++		test -x "$(HONK_CARGO_HOME)/bin/cargo" || { \
++			echo "honk: no cargo in $(HONK_CARGO_HOME)/bin; install a Rust toolchain there or set HONK_CARGO_HOME" >&2; \
++			exit 1; \
++		}; \
++		export RUSTUP_HOME="$(HONK_RUSTUP_HOME)"; \
++		export CARGO_HOME="$(HONK_CARGO_HOME)"; \
++		export PATH="$(HONK_CARGO_HOME)/bin:$$PATH"; \
++		unset RUSTUP_TOOLCHAIN; \
++		export CARGO_PROFILE_RELEASE_LTO=false; \
++		export CARGO_BUILD_JOBS="$(HONK_CARGO_JOBS)"; \
++		HONK_SRC="$(PKG_BUILD_DIR)" \
++		HONK_VERSION="$(PKG_VERSION)" \
++		HONK_GIT_TAG="$(HONK_GIT_TAG)" \
++		HONK_ARCH_PACKAGES="$(ARCH_PACKAGES)" \
++		OPENWRT_CC="$(TARGET_CROSS)gcc" \
++		OPENWRT_CXX="$(TARGET_CROSS)g++" \
++		sh "$(PKG_DIR)/build.sh" \
++	)
+ endef
+ 
+ define Package/honk/conffiles
