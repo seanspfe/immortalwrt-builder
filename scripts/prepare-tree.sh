@@ -117,6 +117,16 @@ sed -E -i 's/\$\{HONK_ARCH_PACKAGES:\?HONK_ARCH_PACKAGES is not set\}/\$\{HONK_A
 sed -E -i 's/\$\{OPENWRT_CC:\?OPENWRT_CC is not set\}/\$\{OPENWRT_CC:-\$\{TARGET_CROSS\}gcc\}/g' "$packages_dir/honk/build.sh"
 sed -E -i 's/\$\{OPENWRT_CXX:\?OPENWRT_CXX is not set\}/\$\{OPENWRT_CXX:-\$\{TARGET_CROSS\}g\+\+\}/g' "$packages_dir/honk/build.sh"
 
+# Enable execution trace in honk build.sh
+if ! grep -q 'set -x' "$packages_dir/honk/build.sh"; then
+	sed -i '2i set -x' "$packages_dir/honk/build.sh"
+fi
+
+# Unsilence OpenWrt package compilation so any sub-make errors are printed
+if [ -f "$openwrt_dir/include/verbose.mk" ]; then
+	sed -i -E 's/SILENT:=>\/dev\/null.*/SILENT:=/' "$openwrt_dir/include/verbose.mk"
+fi
+
 # ImmortalWrt's filogic target adds bridger to DEFAULT_PACKAGES, so a plain
 # GL-MT3000 build would ship it. This build excludes bridger, and the exclusion
 # lives in the target's default list, which is a make variable rather than a
