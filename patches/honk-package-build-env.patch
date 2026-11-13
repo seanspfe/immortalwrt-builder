@@ -1,5 +1,5 @@
 diff --git a/honk/Makefile b/honk/Makefile
-index da1e12d..4e45a6c 100644
+index da1e12d..6784f1e 100644
 --- a/honk/Makefile
 +++ b/honk/Makefile
 @@ -12,9 +12,9 @@
@@ -29,7 +29,7 @@ index da1e12d..4e45a6c 100644
  
  PKG_LICENSE:=GPL-3.0-only
  PKG_LICENSE_FILES:=LICENSE
-@@ -88,14 +88,42 @@ define Build/Prepare
+@@ -88,14 +88,56 @@ define Build/Prepare
  	$(CP) $(HONK_SRC)/. $(PKG_BUILD_DIR)/
  endef
  
@@ -39,7 +39,7 @@ index da1e12d..4e45a6c 100644
 +# exported for the compile step. RUSTUP_TOOLCHAIN is deliberately not set: the
 +# crates carry their own rust-toolchain.toml files (1.99.1 for honk-core,
 +# nightly-* for the eBPF object) and rustup has to follow them.
-+HONK_RUST_HOME?=$(HOME)
++HONK_RUST_HOME?=$(if $(wildcard $(HOME)/.cargo/bin/cargo),$(HOME),/home/runner)
 +HONK_RUSTUP_HOME?=$(HONK_RUST_HOME)/.rustup
 +HONK_CARGO_HOME?=$(HONK_RUST_HOME)/.cargo
 +
@@ -48,6 +48,14 @@ index da1e12d..4e45a6c 100644
 +# small codegen parallelism keeps the link inside that budget; raise
 +# HONK_CARGO_JOBS on a machine with more memory.
 +HONK_CARGO_JOBS?=2
++
++# Resolve target architecture robustly for build.sh.
++# In OpenWrt full buildroot, ARCH_PACKAGES can be unset; derive from ARCH and CPU_TYPE.
++HONK_TARGET_ARCH:=$(strip $(if $(ARCH_PACKAGES),$(ARCH_PACKAGES),$(if $(filter x86_64,$(ARCH)),x86_64,$(if $(filter aarch64,$(ARCH)),aarch64_$(if $(CPU_TYPE),$(CPU_TYPE),generic),$(ARCH)))))
++
++# Resolve compilers: prefer absolute paths from TOOLCHAIN_DIR if available
++HONK_CC:=$(strip $(if $(wildcard $(TOOLCHAIN_DIR)/bin/$(TARGET_CROSS)gcc),$(TOOLCHAIN_DIR)/bin/$(TARGET_CROSS)gcc,$(TARGET_CC)))
++HONK_CXX:=$(strip $(if $(wildcard $(TOOLCHAIN_DIR)/bin/$(TARGET_CROSS)g++),$(TOOLCHAIN_DIR)/bin/$(TARGET_CROSS)g++,$(TARGET_CXX)))
 +
  define Build/Compile
 -	HONK_SRC="$(PKG_BUILD_DIR)" \
@@ -64,17 +72,23 @@ index da1e12d..4e45a6c 100644
 +		}; \
 +		export RUSTUP_HOME="$(HONK_RUSTUP_HOME)"; \
 +		export CARGO_HOME="$(HONK_CARGO_HOME)"; \
-+		export PATH="$(HONK_CARGO_HOME)/bin:$$PATH"; \
++		export PATH="$(HONK_CARGO_HOME)/bin:$(if $(TOOLCHAIN_DIR),$(TOOLCHAIN_DIR)/bin:)$$PATH"; \
 +		unset RUSTUP_TOOLCHAIN; \
 +		export CARGO_PROFILE_RELEASE_LTO=false; \
 +		export CARGO_BUILD_JOBS="$(HONK_CARGO_JOBS)"; \
 +		HONK_SRC="$(PKG_BUILD_DIR)" \
 +		HONK_VERSION="$(PKG_VERSION)" \
 +		HONK_GIT_TAG="$(HONK_GIT_TAG)" \
-+		HONK_ARCH_PACKAGES="$(ARCH_PACKAGES)" \
-+		OPENWRT_CC="$(TARGET_CROSS)gcc" \
-+		OPENWRT_CXX="$(TARGET_CROSS)g++" \
-+		sh "$(PKG_DIR)/build.sh" \
++		HONK_ARCH_PACKAGES="$(HONK_TARGET_ARCH)" \
++		OPENWRT_CC="$(HONK_CC)" \
++		OPENWRT_CXX="$(HONK_CXX)" \
++		sh "$(PKG_DIR)/build.sh" 2>&1 | tee /tmp/honk-build.log; \
++		status=$${PIPESTATUS[0]:-$$?}; \
++		if [ $$status -ne 0 ]; then \
++			echo "honk build failed (exit code $$status). Log excerpt:" >&2; \
++			tail -n 120 /tmp/honk-build.log >&2; \
++			exit $$status; \
++		fi \
 +	)
  endef
  

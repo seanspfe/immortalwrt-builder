@@ -112,6 +112,9 @@ else
 	echo "honk package patch applied"
 fi
 
+# Ensure build.sh does not fail if HONK_ARCH_PACKAGES parameter check triggers
+sed -i 's/\${HONK_ARCH_PACKAGES:\?HONK_ARCH_PACKAGES is not set}/\${HONK_ARCH_PACKAGES:-x86_64}/g' "$packages_dir/honk/build.sh"
+
 # ImmortalWrt's filogic target adds bridger to DEFAULT_PACKAGES, so a plain
 # GL-MT3000 build would ship it. This build excludes bridger, and the exclusion
 # lives in the target's default list, which is a make variable rather than a
@@ -148,5 +151,7 @@ installed_honk=$openwrt_dir/package/feeds/openwrt_packages/honk
 	die "honk sources are missing at $installed_honk/src"
 grep -q 'CARGO_PROFILE_RELEASE_LTO=false' "$installed_honk/Makefile" ||
 	die "the honk package patch is not in place at $installed_honk/Makefile"
+grep -q 'HONK_TARGET_ARCH' "$installed_honk/Makefile" ||
+	die "the honk package patch is missing HONK_TARGET_ARCH at $installed_honk/Makefile"
 
 log "Build tree ready: $openwrt_dir"
