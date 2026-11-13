@@ -42,7 +42,11 @@ kmod-nf-conntrack v2ray-geoip v2ray-geosite nftables-json firewall4"
 
 echo "== required packages in the image"
 for package in $required; do
-	if printf '%s\n' "$packages" | grep -qx "$package"; then
+	pattern="^$package\$"
+	if [ "$package" = "libstdcpp" ]; then
+		pattern='^libstdcpp[0-9]*$'
+	fi
+	if printf '%s\n' "$packages" | grep -Eq "$pattern"; then
 		pass "$package"
 	else
 		fail "$package is missing from the image"
@@ -73,7 +77,10 @@ for package in bridger ua3f golang; do
 done
 
 echo "== kernel was built with BTF"
-kernel_config=$(find "$openwrt_dir/build_dir" -maxdepth 4 -path '*/linux-6.12.*/.config' 2>/dev/null | head -n1)
+kernel_config=$(find "$openwrt_dir/build_dir" -maxdepth 6 -path '*/target-*/linux-*/linux-6.12.*/.config' 2>/dev/null | head -n1)
+if [ -z "$kernel_config" ]; then
+	kernel_config=$(find "$openwrt_dir/build_dir" -maxdepth 6 -path '*/linux-6.12.*/.config' ! -path '*/toolchain-*' 2>/dev/null | head -n1)
+fi
 if [ -n "$kernel_config" ]; then
 	for symbol in CONFIG_DEBUG_INFO_BTF=y CONFIG_DEBUG_INFO_BTF_MODULES=y; do
 		if grep -qx "$symbol" "$kernel_config"; then
