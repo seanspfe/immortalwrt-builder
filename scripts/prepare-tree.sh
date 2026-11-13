@@ -28,13 +28,20 @@ vantage_dir=$feeds_dir/luci-theme-vantage
 : "${IMMORTALWRT_COMMIT:=4fc16f2985a358bd43bb522e43f05395fcbd6ed5}"
 : "${IMMORTALWRT_KERNEL:=6.12.103}"
 : "${PACKAGES_REPO:=https://github.com/daeuniverse/openwrt-packages.git}"
-: "${PACKAGES_COMMIT:=e48b222f239e2572244c8cf495fbce79b0da7528}"
+PACKAGES_COMMIT="6157f709f52cdbf34c39e5fb69f4b81f468c10e6"
 : "${VANTAGE_REPO:=https://github.com/anothaDev/luci-theme-vantage.git}"
 : "${VANTAGE_TAG:=v1.0.14}"
 : "${VANTAGE_COMMIT:=cddbfb262b7a67a0d3762039e4af66fc0ac92000}"
 : "${HONK_REPO:=https://github.com/daeuniverse/honk.git}"
-: "${HONK_TAG:=v0.1.0-beta.4}"
-: "${HONK_COMMIT:=d3fb81f4d7155581f9d276936690dc9f60ef2b77}"
+HONK_TAG="v0.1.0-beta.6"
+HONK_COMMIT="64848881b7304e250e7a25422f4f1d86a5975eca"
+
+if [ -n "${GITHUB_ENV:-}" ]; then
+	echo "HONK_TAG=$HONK_TAG" >> "$GITHUB_ENV"
+	echo "HONK_COMMIT=$HONK_COMMIT" >> "$GITHUB_ENV"
+	echo "PACKAGES_COMMIT=$PACKAGES_COMMIT" >> "$GITHUB_ENV"
+	echo "DOONA_VERSION=0.1.0-rc.6" >> "$GITHUB_ENV"
+fi
 
 log() { printf '\n==> %s\n' "$*"; }
 die() { printf 'error: %s\n' "$*" >&2; exit 1; }

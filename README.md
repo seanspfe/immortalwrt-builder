@@ -22,13 +22,13 @@ moved tag fails the build instead of silently changing the firmware.
 | --- | --- | --- | --- |
 | ImmortalWrt | tag `v25.12.2` | `4fc16f2985a358bd43bb522e43f05395fcbd6ed5` | `immortalwrt/immortalwrt` |
 | Linux kernel | `6.12.103` | — | `target/linux/generic/kernel-6.12` (`LINUX_VERSION-6.12 = .103`); both targets use `KERNEL_PATCHVER:=6.12` |
-| honk | tag `v0.1.0-beta.4` | `d3fb81f4d7155581f9d276936690dc9f60ef2b77` | `daeuniverse/honk` |
-| honk packages (LuCI app, `luci-lib-daeuniverse`, `vmlinux-btf*`) | commit | `e48b222f239e2572244c8cf495fbce79b0da7528` | `daeuniverse/openwrt-packages` |
-| doona panel (embedded in honk's native UI) | `0.1.0-rc.4` | `58dfe2e2d1bccb1c0363895adb27eb4bfa1e932d` | `Zakkaus/doona`, pinned by honk's `.github/ci/pins.env` |
+| honk | tag `v0.1.0-beta.6` | `64848881b7304e250e7a25422f4f1d86a5975eca` | `daeuniverse/honk` |
+| honk packages (LuCI app, `luci-lib-daeuniverse`, `vmlinux-btf*`) | commit | `6157f709f52cdbf34c39e5fb69f4b81f468c10e6` | `daeuniverse/openwrt-packages` |
+| doona panel (embedded in honk's native UI) | `0.1.0-rc.6` | `4c1f6f3fc1523558d595c363ba677494844030e3` | `Zakkaus/doona`, pinned by honk's `.github/ci/pins.env` |
 | Vantage theme | tag `v1.0.14` | `cddbfb262b7a67a0d3762039e4af66fc0ac92000` | `anothaDev/luci-theme-vantage` |
 | bpf-linker | `v0.11.0` | prebuilt `bpf-linker-x86_64-unknown-linux-musl.tar.zst` (SHA-256 `10f62ba9ab7e544d538370552660efcb4f1a19153d5752bbf0f6b51f3bada450`) | `aya-rs/bpf-linker` |
-| Rust (honk-core) | `1.99.1` | — | `rust-toolchain.toml` of honk `v0.1.0-beta.4` |
-| Rust (eBPF object) | `nightly-2026-10-20` | — | `crates/honk-ebpf/rust-toolchain.toml` of honk `v0.1.0-beta.4` |
+| Rust (honk-core) | `1.99.1` | — | `rust-toolchain.toml` of honk `v0.1.0-beta.6` |
+| Rust (eBPF object) | `nightly-2026-10-20` | — | `crates/honk-ebpf/rust-toolchain.toml` of honk `v0.1.0-beta.6` |
 
 kernel 6.12 is honk's floor (it requires Linux ≥ 6.12); `scripts/prepare-tree.sh`
 refuses to continue if the checked-out tree does not report 6.12.103.
@@ -191,22 +191,13 @@ was built from, stays out.
 
 ### honk's package Makefile
 
-`patches/honk-package-build-env.patch` changes two things in
+`patches/honk-package-build-env.patch` configures the Rust build environment in
 `daeuniverse/openwrt-packages`' `honk/Makefile`:
 
-1. **Version pin.** That commit (`e48b222`, 2026-11-04, "build(honk): move to
-   v0.1.0-beta.5") defaults the package to `0.1.0_beta5` / `v0.1.0-beta.5`,
-   while this build pins honk `v0.1.0-beta.4`. The patch moves the defaults back
-   to `0.1.0_beta4` / `v0.1.0-beta.4`, so package version, `HONK_GIT_TAG` and
-   the binary's embedded version all agree. The packaging scripts themselves are
-   identical between the two commits apart from those version strings.
-2. **Rust build environment.** `Build/Compile` now exports `RUSTUP_HOME`,
-   `CARGO_HOME` and `PATH` pointing at `~/.rustup`, `~/.cargo` and
-   `~/.cargo/bin`, sets `CARGO_PROFILE_RELEASE_LTO=false` and
-   `CARGO_BUILD_JOBS` (default `2`), and leaves `RUSTUP_TOOLCHAIN` unset. The
-   workspace's release profile uses fat LTO with one codegen unit, which peaks
-   above the memory of a hosted runner; turning LTO off and limiting
-   parallelism keeps the link inside it. Set `HONK_CARGO_JOBS` to raise it.
+`Build/Compile` exports `RUSTUP_HOME`, `CARGO_HOME` and `PATH` pointing at `~/.rustup`,
+`~/.cargo` and `~/.cargo/bin`, sets `CARGO_PROFILE_RELEASE_LTO=false` and
+`CARGO_BUILD_JOBS` (default `2`), dynamically resolves target cross compilers and
+architecture strings, and invokes `/bin/bash "$(PKG_DIR)/build.sh"` directly.
 
 ### Feeds
 
