@@ -99,3 +99,11 @@ if [ "$failures" -ne 0 ]; then
 	echo "error: the image does not match the specification" >&2
 	exit 1
 fi
+
+echo "== stage images for artifact collection"
+mkdir -p "$openwrt_dir/bin/targets" "out/$target"
+find "$target_dir" -maxdepth 1 -type f \
+	\( -name "*.img.gz" -o -name "*.bin" -o -name "*.manifest" \
+	   -o -name "*.buildinfo" -o -name "sha256sums" -o -name "profiles.json" \) \
+	-exec cp -f {} "$openwrt_dir/bin/targets/" \; \
+	-exec cp -f {} "out/$target/" \;
